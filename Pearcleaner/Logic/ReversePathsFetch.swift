@@ -18,7 +18,6 @@ class ReversePathsSearcher {
     private var fileSize: [URL: Int64] = [:]
     private var fileSizeLogical: [URL: Int64] = [:]
     private var fileIcon: [URL: NSImage?] = [:]
-    private var isDirectory: [URL: Bool] = [:]
     private let dispatchGroup = DispatchGroup()
     private let sortedApps: [AppInfo]
 
@@ -72,7 +71,7 @@ class ReversePathsSearcher {
 
         guard !skipReverse.contains(where: { itemName.pearFormat().contains($0) }),
               isSupportedFileType(at: itemURL.path),
-        !isRelatedToInstalledApp(itemPath: itemPath),
+              !isRelatedToInstalledApp(itemURL: itemURL),
         !isExcludedByConditions(itemPath: itemPath) else {
 
             return
@@ -81,10 +80,21 @@ class ReversePathsSearcher {
         collection.append(itemURL)
     }
 
-    private func isRelatedToInstalledApp(itemPath: String) -> Bool {
+    private func isRelatedToInstalledApp(itemURL: URL) -> Bool {
+        let itemPath = itemURL.path.pearFormat()
+
         for app in sortedApps {
-            if itemPath.contains(app.bundleIdentifier.pearFormat()) || itemPath.contains(app.appName.pearFormat()) {
+            if itemPath.contains(app.bundleIdentifier.pearFormat()) || 
+                itemPath.contains(app.appName.pearFormat()) {
                 return true
+            }
+
+            // Check if the path contains /Containers or /Group Containers
+            if itemURL.path.contains("/Containers/") {
+                let containerName = itemURL.containerNameByUUID().pearFormat()
+                if containerName.contains(app.bundleIdentifier.pearFormat()) {
+                    return true
+                }
             }
         }
         return false
@@ -113,7 +123,6 @@ class ReversePathsSearcher {
             fileSize[path] = size.real
             fileSizeLogical[path] = size.logical
             fileIcon[path] = getIconForFileOrFolderNS(atPath: path)
-            isDirectory[path] = path.hasDirectoryPath
         }
     }
 
@@ -123,7 +132,6 @@ class ReversePathsSearcher {
             updatedZombieFile.fileSize = self.fileSize
             updatedZombieFile.fileSizeLogical = self.fileSizeLogical
             updatedZombieFile.fileIcon = self.fileIcon
-            updatedZombieFile.isDirectory = self.isDirectory
             self.appState.zombieFile = updatedZombieFile
             self.appState.showProgress = false
         }
