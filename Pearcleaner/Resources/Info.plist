@@ -2,10 +2,6 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<key>CFBundleShortVersionString</key>
-	<string>$(APP_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(APP_BUILD)</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -34,6 +30,24 @@
 			<array>
 				<string>pear</string>
 			</array>
+		</dict>
+	</array>
+	<key>NSServices</key>
+	<array>
+		<dict>
+			<key>NSMenuItem</key>
+			<dict>
+				<key>default</key>
+				<string>Uninstall with Pearcleaner</string>
+			</dict>
+			<key>NSMessage</key>
+			<string>handleServiceRequest</string>
+			<key>NSSendFileTypes</key>
+			<array>
+				<string>com.apple.application-bundle</string>
+			</array>
+			<key>NSRequiredContext</key>
+			<dict/>
 		</dict>
 	</array>
 </dict>

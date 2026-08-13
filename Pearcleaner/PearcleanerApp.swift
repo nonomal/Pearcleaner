@@ -12,193 +12,112 @@ import AlinFoundation
 @main
 struct PearcleanerApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject var appState = AppState()
+    //MARK: ObservedObjects
+    @ObservedObject var appState = AppState.shared
+    @ObservedObject private var permissionManager = PermissionManagerLocal.shared
+    @ObservedObject private var helperToolManager = HelperToolManager.shared
+    //MARK: StateObjects
     @StateObject var locations = Locations()
-    @StateObject var fsm = FolderSettingsManager()
+    @StateObject var fsm = FolderSettingsManager.shared
     @StateObject private var updater = Updater(owner: "alienator88", repo: "Pearcleaner")
-    @StateObject private var themeManager = ThemeManager.shared
-    @StateObject private var permissionManager = PermissionManager.shared
-    @State private var windowSettings = WindowSettings()
-    @AppStorage("settings.permissions.hasLaunched") private var hasLaunched: Bool = false
-    @AppStorage("settings.general.mini") private var mini: Bool = false
-    @AppStorage("settings.general.miniview") private var miniView: Bool = true
-    @AppStorage("settings.general.brew") private var brew: Bool = false
-    @AppStorage("settings.menubar.enabled") private var menubarEnabled: Bool = false
-    @AppStorage("settings.menubar.mainWin") private var mainWinEnabled: Bool = false
-    @State private var search = ""
-    @State private var showPopover: Bool = false
-    let conditionManager = ConditionManager.shared
 
+    init() {
+        //MARK: GUI or CLI launch mode.
+        handleLaunchMode()
+
+        //MARK: Initialize password request handler for SUDO_ASKPASS IPC
+        _ = PasswordRequestHandler.shared
+
+        //MARK: Pre-load apps data during app initialization (use streaming for fast initial load)
+        let folderPaths = FolderSettingsManager.shared.folderPaths
+        loadApps(folderPaths: folderPaths, useStreaming: true)
+
+        //MARK: Pre-load volume information
+        AppState.shared.loadVolumeInfo()
+
+    }
 
     var body: some Scene {
+
         WindowGroup {
-            Group {
-                if mini {
-                    MiniMode(search: $search, showPopover: $showPopover)
-                } else {
-                    RegularMode(search: $search, showPopover: $showPopover)
-                }
-            }
-            .environmentObject(appState)
-            .environmentObject(locations)
-            .environmentObject(fsm)
-            .environmentObject(themeManager)
-            .environmentObject(updater)
-            .environmentObject(permissionManager)
-            .preferredColorScheme(themeManager.displayMode.colorScheme)
-            .handlesExternalEvents(preferring: Set(arrayLiteral: "pear"), allowing: Set(arrayLiteral: "*"))
-            .onOpenURL(perform: { url in
-                let deeplinkManager = DeeplinkManager(showPopover: $showPopover)
-                deeplinkManager.manage(url: url, appState: appState, locations: locations)
-            })
-            .onDrop(of: ["public.file-url"], isTargeted: nil) { providers, _ in
-                for provider in providers {
-                    provider.loadItem(forTypeIdentifier: "public.file-url") { data, error in
-                        if let data = data as? Data, let url = URL(dataRepresentation: data, relativeTo: nil) {
-                            let deeplinkManager = DeeplinkManager(showPopover: $showPopover)
-                            deeplinkManager.manage(url: url, appState: appState, locations: locations)
-                        }
-                    }
-                }
-                return true
-            }
-            // Save window size on window dimension change
-            .onChange(of: NSApplication.shared.windows.first?.frame) { newFrame in
-                if let newFrame = newFrame {
-                    windowSettings.saveWindowSettings(frame: newFrame)
-                }
-            }
-            .alert(isPresented: $appState.showUninstallAlert) {
-                Alert(
-                    title: Text("Warning!"),
-                    message: Text("Pearcleaner and all of its files will be cleanly removed, are you sure?"),
-                    primaryButton: .destructive(Text("Uninstall")) {
-                        uninstallPearcleaner(appState: appState, locations: locations)
-                    },
-                    secondaryButton: .cancel()
-                )
-            }
-            .sheet(isPresented: $updater.showSheet, content: {
-                /// This will show the update sheet based on the frequency check function only
-                updater.getUpdateView()
-                    .environmentObject(themeManager)
-            })
-            .onAppear {
-
-                if miniView {
-                    appState.currentView = .apps
-                } else {
-                    appState.currentView = .empty
-                }
-
-
-                // Disable tabbing
-                NSWindow.allowsAutomaticWindowTabbing = false
-
-                // Load apps list on startup
-                reloadAppsList(appState: appState, fsm: fsm)
-
-                // Enable menubar item
-                if menubarEnabled {
-                    MenuBarExtraManager.shared.addMenuBarExtra(withView: {
-                        MiniAppView(search: $search, showPopover: $showPopover, isMenuBar: true)
-                            .environmentObject(appState)
-                            .environmentObject(locations)
-                            .environmentObject(fsm)
-                            .environmentObject(themeManager)
-                            .environmentObject(updater)
-                            .environmentObject(permissionManager)
-                            .preferredColorScheme(themeManager.displayMode.colorScheme)
-                    })
-                }
-
-
-#if !DEBUG
-                Task {
-
-                    // Make sure App Support folder exists in the future if needed for storage
-                    //                    ensureApplicationSupportFolderExists(appState: appState)
-
-                }
-
-#endif
-            }
-        }
-        
-        .windowStyle(.hiddenTitleBar)
-        .windowResizability(.contentMinSize)
-        .commands {
-            AppCommands(appState: appState, locations: locations, fsm: fsm, updater: updater, themeManager: themeManager)            
-        }
-
-
-
-        
-        Settings {
-            SettingsView(showPopover: $showPopover, search: $search)
+            MainWindow()
                 .environmentObject(appState)
                 .environmentObject(locations)
                 .environmentObject(fsm)
-                .environmentObject(themeManager)
                 .environmentObject(updater)
                 .environmentObject(permissionManager)
-                .toolbarBackground(.clear)
-                .preferredColorScheme(themeManager.displayMode.colorScheme)
+
+        }
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified)
+        .windowResizability(.contentMinSize)
+        .commands {
+            AppCommands(appState: appState, locations: locations, fsm: fsm, updater: updater)
         }
     }
 }
 
 
 
-
+// MARK: - App Delegate
 class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    var windowSettings = WindowSettings()
-    var themeManager = ThemeManager.shared
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        let menubarEnabled = UserDefaults.standard.bool(forKey: "settings.menubar.enabled")
-        return !menubarEnabled
+        return true
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        let menubarEnabled = UserDefaults.standard.bool(forKey: "settings.menubar.enabled")
-//        UserDefaults.standard.register(defaults: ["NSQuitAlwaysKeepsWindows" : false])
+        NSWindow.allowsAutomaticWindowTabbing = false
 
-        findAndSetWindowFrame(named: ["Pearcleaner"], windowSettings: windowSettings)
+        // Register as services provider (required for NSServices to work)
+        NSApp.servicesProvider = self
 
-        themeManager.setupAppearance()
-
-        if menubarEnabled {
-            findAndHideWindows(named: ["Pearcleaner"])
-            NSApplication.shared.setActivationPolicy(.accessory)
+        // Check permissions once at launch
+        PermissionManagerLocal.shared.checkPermissions(types: [.fullDiskAccess]) { results in
+            PermissionManagerLocal.shared.results = results
         }
+
+        // Load and cleanup undo history
+        Task { @MainActor in
+            UndoHistoryManager.shared.cleanupStaleEntries()
+        }
+
+        ensureApplicationSupportFolderExists()
+
+        cleanupPearcleanerTempDirs()
 
     }
 
+    func applicationWillTerminate(_ notification: Notification) {}
 
-
-    func applicationWillTerminate(_ notification: Notification) {
-        // Perform actions on app termination here
-
-    }
-
-
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        let windowSettings = WindowSettings()
-
-        if !flag {
-            // No visible windows, so let's open a new one
-            for window in sender.windows {
-                window.title = "Pearcleaner"
-                window.makeKeyAndOrderFront(self)
-                updateOnMain(after: 0.1, {
-                    resizeWindowAuto(windowSettings: windowSettings, title: "Pearcleaner")
-                })
-            }
-            return true // Indicates you've handled the re-open
-        }
-        // Return true if you want the application to proceed with its default behavior
+    func applicationShouldRestoreApplicationState(_ app: NSApplication) -> Bool {
         return false
+    }
+
+    // MARK: - Service Handler
+    @objc func handleServiceRequest(_ pasteboard: NSPasteboard, userData: NSString, error: AutoreleasingUnsafeMutablePointer<NSString>) {
+        // Get file URLs from pasteboard
+        guard let fileURLs = pasteboard.readObjects(forClasses: [NSURL.self], options: [
+            .urlReadingFileURLsOnly: true
+        ]) as? [URL], !fileURLs.isEmpty else {
+            printOS("Service: No valid file URLs found in pasteboard")
+            return
+        }
+
+        // Process all selected .app files
+        let appURLs = fileURLs.filter { $0.pathExtension == "app" }
+
+        guard !appURLs.isEmpty else {
+            printOS("Service: No .app bundles found in selection")
+            return
+        }
+
+        // Open deep link for each app - DeeplinkManager will queue and process them sequentially
+        for appURL in appURLs {
+            if let deepLinkURL = URL(string: "pear://com.alienator88.Pearcleaner?path=\(appURL.path.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? appURL.path)") {
+                NSWorkspace.shared.open(deepLinkURL)
+            }
+        }
     }
 
 }

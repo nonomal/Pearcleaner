@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import SwiftData
 
 struct Condition: Codable {
     var bundle_id: String
@@ -35,8 +34,9 @@ struct Condition: Codable {
 }
 
 struct SkipCondition {
-    var skipPrefix: String
+    var skipPrefix: [String]
     var allowPrefixes: [String]
+    var skipPaths: [String]
 }
 
 
@@ -46,11 +46,17 @@ var conditions: [Condition] = [
     Condition(
         bundle_id: "com.apple.dt.xcode",
         include: ["com.apple.dt", "xcode", "simulator"],
-        exclude: ["com.robotsandpencils.xcodesapp", "com.oneminutegames.xcodecleaner", "io.hyperapp.xcodecleaner", "xcodes.json"],
+        exclude: ["com.robotsandpencils.xcodesapp", "com.xcodesorg.xcodesapp", "com.oneminutegames.xcodecleaner", "io.hyperapp.xcodecleaner", "available-xcodes", "xcodes", "cleaner for xcode"],
         includeForce: ["\(home)/Library/Containers/com.apple.iphonesimulator.ShareExtension"]
     ),
     Condition(
         bundle_id: "com.robotsandpencils.xcodesapp",
+        include: [],
+        exclude: ["com.apple.dt.xcode", "com.oneminutegames.xcodecleaner", "io.hyperapp.xcodecleaner"],
+        includeForce: nil
+    ),
+    Condition(
+        bundle_id: "com.xcodesorg.xcodesapp",
         include: [],
         exclude: ["com.apple.dt.xcode", "com.oneminutegames.xcodecleaner", "io.hyperapp.xcodecleaner"],
         includeForce: nil
@@ -82,38 +88,56 @@ var conditions: [Condition] = [
     Condition(
         bundle_id: "com.google.chrome",
         include: ["google", "chrome"],
-        exclude: ["iterm", "chromefeaturestate"],
+        exclude: ["iterm", "chromefeaturestate", "monochrome"],
         includeForce: nil
     ),
     Condition(
         bundle_id: "com.microsoft.edgemac",
-        include: ["microsoft"],
+        include: [],
         exclude: ["vscode", "rdc", "appcenter", "office", "oneauth"],
         includeForce: nil
     ),
     Condition(
+        bundle_id: "com.microsoft.teams2",
+        include: [],
+        exclude: ["office"],
+        includeForce: nil
+    ),
+    Condition(
         bundle_id: "org.mozilla.firefox",
-        include: ["mozilla", "firefox"],
-        exclude: [],
+        include: ["firefox"],
+        exclude: ["thunderbird"],
+        includeForce: nil
+    ),
+    Condition(
+        bundle_id: "org.mozilla.thunderbird",
+        include: [],
+        exclude: ["firefox"],
         includeForce: nil
     ),
     Condition(
         bundle_id: "org.mozilla.firefox.nightly",
         include: ["mozilla", "firefox"],
-        exclude: [],
+        exclude: ["thunderbird"],
         includeForce: nil
     ),
     Condition(
         bundle_id: "com.logi.optionsplus",
-        include: ["logi"],
+        include: ["logi", "logipluginservice"],
         exclude: ["login", "logic"],
         includeForce: nil
     ),
     Condition(
-        bundle_id: "com.microsoft.vscode",
+        bundle_id: "com.microsoft.VSCode",
         include: ["vscode"],
-        exclude: [],
+        exclude: ["vscodeinsiders", "insiders"],
         includeForce: ["\(home)/Library/Application Support/Code/"]
+    ),
+    Condition(
+        bundle_id: "com.microsoft.VSCodeInsiders",
+        include: ["vscodeinsiders", "insiders"],
+        exclude: [],
+        includeForce: ["\(home)/Library/Application Support/Code - Insiders/"]
     ),
     Condition(
         bundle_id: "com.facebook.archon.developerid",
@@ -128,8 +152,50 @@ var conditions: [Condition] = [
         includeForce: nil
     ),
     Condition(
+        bundle_id: "me.mhaeuser.BatteryToolkit",
+        include: ["memhaeuser"],
+        exclude: [],
+        includeForce: nil
+    ),
+    Condition(
         bundle_id: "jetbrains",
-        include: ["jetbrains", "jcef"],
+        include: ["jcef"],
+        exclude: [],
+        includeForce: ["\(home)/Library/Application Support/JetBrains/", "\(home)/Library/Caches/JetBrains/", "\(home)/Library/Logs/JetBrains/"]
+    ),
+    Condition(
+        bundle_id: "company.thebrowser.Browser",
+        include: ["firestore"],
+        exclude: [],
+        includeForce: ["\(home)/Library/Application Support/Arc/", "\(home)/Library/Caches/Arc/"]
+    ),
+    Condition(
+        bundle_id: "com.1password.1password",
+        include: ["waveboxapp", "sidekick"],
+        exclude: [],
+        includeForce: nil
+    ),
+    Condition(
+        bundle_id: "com.now.gg.BlueStacks",
+        include: ["bst_boost_interprocess"],
+        exclude: [],
+        includeForce: nil
+    ),
+    Condition(
+        bundle_id: "com.electron.sdm",
+        include: ["strongdm"],
+        exclude: [],
+        includeForce: nil
+    ),
+    Condition(
+        bundle_id: "com.github.githubclient",
+        include: ["comgithubelectron"],
+        exclude: [],
+        includeForce: nil
+    ),
+    Condition(
+        bundle_id: "com.native-instruments.nativeaccess",
+        include: ["comnative", "nativeinstruments"],
         exclude: [],
         includeForce: nil
     ),
@@ -137,72 +203,58 @@ var conditions: [Condition] = [
 
 
 
-// Skip com.apple files/folders since most are system originated, allow some for apps
+// Skip some system files/folders
 let skipConditions: [SkipCondition] = [
     SkipCondition(
-        skipPrefix: "comapple",
-        allowPrefixes: ["comappleconfigurator", "comappledt", "comappleiwork", "comapplesfsymbols", "comappletestflight"]
+        skipPrefix: ["mobiledocuments", "reminders", "dsstore", "comapplepasswordmanager"],
+        allowPrefixes: ["comappleconfigurator", "comappledt", "comappleiwork", "comapplesfsymbols", "comappletestflight", "comapplesharedfilelist", "comapplelssharedfilelist"],
+        skipPaths: ["\(home)/.Trash", "/Library/SystemExtensions", "/System/Volumes/Preboot/Cryptexes/App/System/Library/CoreServices/PasswordManagerBrowserExtensionHelper.app/Contents/MacOS/PasswordManagerBrowserExtensionHelper", "\(home)/Library/Application Support/Chromium/NativeMessagingHosts/com.apple.passwordmanager.json", "\(home)/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.apple.passwordmanager.json"]
     )
 ]
 
 
-// Skip files/folders during leftover file search
-let skipReverse = ["apple", "temporary", "btserver", "proapps", "scripteditor", "ilife", "livefsd", "siritoday", "addressbook", "animoji", "appstore", "askpermission", "callhistory", "clouddocs", "diskimages", "dock", "facetime", "fileprovider", "instruments", "knowledge", "mobilesync", "syncservices", "homeenergyd", "icloud", "icdd", "networkserviceproxy", "familycircle", "geoservices", "installation", "passkit", "sharedimagecache", "desktop", "mbuseragent", "swiftpm", "baseband", "coresimulator", "photoslegacyupgrade", "photosupgrade", "siritts", "ipod", "globalpreferences", "apmanalytics", "apmexperiment", "avatarcache", "byhost", "contextstoreagent", "mobilemeaccounts", "mobiledocuments", "mobile", "intentbuilderc", "loginwindow", "momc", "replayd", "sharedfilelistd", "clang", "audiocomponent", "csexattrcryptoservice", "livetranscriptionagent", "sandboxhelper", "statuskitagent", "betaenrollmentd", "contentlinkingd", "diagnosticextensionsd", "gamed", "heard", "homed", "itunescloudd", "lldb", "mds", "mediaanalysisd", "metrickitd", "mobiletimerd", "proactived", "ptpcamerad", "studentd", "talagent", "watchlistd", "apptranslocation", "xcrun", "ds_store", "caches", "crashreporter", "trash", "pearcleaner", "amsdatamigratortool", "arfilecache", "assistant", "chromium", "cloudkit", "webkit", "databases", "diagnostic", "cache", "gamekit", "homebrew", "logi", "microsoft", "mozilla", "sync", "google", "sentinel", "hexnode", "sentry", "tvappservices", "reminders"]
+// Library subdirectories that should be excluded from deep (depth=2) search
+// These are macOS system directories that never contain third-party app files
+let skipDeepSearch: Set<String> = [
+    // Core System
+    "Apple", "Audio", "Bluetooth", "ColorSync", "Components", "CoreAnalytics",
+    "CoreMediaIO", "DirectoryServices", "Filesystems", "GPUBundles", "Graphics",
+    "KernelCollections", "OSAnalytics", "OpenDirectory", "Sandbox", "Security",
+    "SystemExtensions", "SystemMigration", "SystemProfiler", "StagedDriverExtensions",
+    "StagedExtensions", "StartupItems",
+
+    // User Data & System Services (should not be searched)
+    "Accessibility", "Accounts", "AppleMediaServices", "Assistant", "Assistants",
+    "Autosave Information", "Biome", "Calendars", "CallServices", "CloudStorage",
+    "Contacts", "Cookies", "DataAccess", "DataDeliveryServices", "DoNotDisturb",
+    "DuetExpertCenter", "Finance", "FinanceBackup", "FrontBoard", "GameKit",
+    "GroupContainersAlias", "HomeKit", "IdentityServices", "IntelligencePlatform",
+    "Intents", "KeyboardServices", "LanguageModeling", "LockdownMode", "Mail",
+    "MediaAnalysis", "Messages", "Metadata", "Mobile Documents", "MobileDevice",
+    "News", "Passes", "PersonalizationPortrait", "Photos", "PrivateCloudCompute",
+    "Reminders", "ResponseKit", "Safari", "SafariSafeBrowsing", "SafariSandboxBroker",
+    "ScreenRecordings", "StatusKit", "Suggestions", "SyncedPreferences", "Translation",
+    "UnifiedAssetFramework", "Weather", "homeenergyd", "studentd",
+
+    // Development/System Tools
+    "Developer", "Perl", "Ruby", "Java", "Python", "Catacomb", "InstallerSandboxes",
+    "Trial", "Updates", "Staging", "ContainerManager", "Daemon Containers",
+
+    // Additional System Directories
+    "ColorPickers", "Colors", "Compositions", "Contextual Menu Items", "Documentation",
+    "DriverExtensions", "Favorites", "FontCollections", "Fonts", "Image Capture",
+    "Input Methods", "Jupyter", "Keyboard", "Keyboard Layouts", "Keychains",
+    "Managed Preferences", "PDF Services", "Printers", "QuickLook", "Receipts",
+    "Screen Savers", "ScriptingAdditions", "Scripts", "Sharing", "Shortcuts",
+    "Sounds", "Speech", "Spelling", "Spotlight", "User Pictures", "User Template",
+    "Video", "WebServer", "Workflows",
+
+    // Apple service bundles (com.apple.*)
+    "com.apple.AppleMediaServices", "com.apple.WatchListKit", "com.apple.aiml.instrumentation",
+    "com.apple.appleaccountd", "com.apple.bluetooth.services.cloud", "com.apple.bluetoothuser",
+    "com.apple.familycircled", "com.apple.iTunesCloud", "com.apple.internal.ck"
+]
 
 
-
-
-
-
-// Store and load conditions locally via SwiftData
-class ConditionManager {
-    static let shared = ConditionManager()
-
-    private init() {
-        loadConditions()
-    }
-
-    // Function to save a condition
-    func saveCondition(_ condition: Condition) {
-        if condition.include.isEmpty && condition.exclude.isEmpty && (condition.includeForce?.isEmpty ?? true) {
-            deleteCondition(bundle_id: condition.bundle_id)
-            return
-        }
-        let defaults = UserDefaults.standard
-        let encoder = JSONEncoder()
-        let key = "Condition-\(condition.bundle_id)"
-
-        if let encoded = try? encoder.encode(condition) {
-            defaults.set(encoded, forKey: key)
-            conditions.append(condition)
-        }
-    }
-
-    // Function to delete a condition from defaults and conditions variable
-    func deleteCondition(bundle_id: String) {
-        let defaults = UserDefaults.standard
-        let key = "Condition-\(bundle_id.pearFormat())"
-
-        // Remove from UserDefaults
-        defaults.removeObject(forKey: key)
-
-        // Remove from conditions variable
-        conditions.removeAll { $0.bundle_id == bundle_id.pearFormat() }
-    }
-
-    // Function to load a condition and append to the global variable
-    func loadConditions() {
-        let defaults = UserDefaults.standard
-        let decoder = JSONDecoder()
-
-        for (key, value) in defaults.dictionaryRepresentation() {
-            if key.starts(with: "Condition-"), let savedCondition = value as? Data {
-                if let loadedCondition = try? decoder.decode(Condition.self, from: savedCondition) {
-                    conditions.append(loadedCondition)
-                }
-            }
-        }
-    }
-
-    
-}
+// Skip files/folders during orphaned file search
+let skipReverse = ["apple", "temporary", "btserver", "proapps", "scripteditor", "ilife", "livefsd", "siritoday", "addressbook", "animoji", "appstore", "askpermission", "callhistory", "clouddocs", "diskimages", "dock", "facetime", "fileprovider", "instruments", "knowledge", "mobilesync", "syncservices", "homeenergyd", "icloud", "icdd", "networkserviceproxy", "familycircle", "geoservices", "installation", "passkit", "sharedimagecache", "desktop", "mbuseragent", "swiftpm", "baseband", "coresimulator", "photoslegacyupgrade", "photosupgrade", "siritts", "ipod", "globalpreferences", "apmanalytics", "apmexperiment", "avatarcache", "byhost", "contextstoreagent", "mobilemeaccounts", "mobiledocuments", "mobile", "intentbuilderc", "loginwindow", "momc", "replayd", "sharedfilelistd", "clang", "audiocomponent", "csexattrcryptoservice", "livetranscriptionagent", "sandboxhelper", "statuskitagent", "betaenrollmentd", "contentlinkingd", "diagnosticextensionsd", "gamed", "heard", "homed", "itunescloudd", "lldb", "mds", "mediaanalysisd", "metrickitd", "mobiletimerd", "proactived", "ptpcamerad", "studentd", "talagent", "watchlistd", "apptranslocation", "xcrun", "ds_store", "caches", "crashreporter", "trash", "pearcleaner", "amsdatamigratortool", "arfilecache", "assistant", "chromium", "cloudkit", "webkit", "databases", "diagnostic", "cache", "gamekit", "homebrew", "logi", "microsoft", "mozilla", "sync", "google", "sentinel", "hexnode", "sentry", "tvappservices", "reminders", "pbs", "notarytool", "differentialprivacy", "storeassetd", "webpush", "storedownloadd", "fsck", "crash", "python", "discrecording", "photossearch", "pylint", "jamf", "scopedbookmarkagent", "anonymous", "identifier", "isolated", "nobackup", "privacypreservingmeasurement", "symbols", "stickersd", "privatecloudcomputed", "tipsd", "controlcenter", "contactsd", "staticcheck", "index", "segment", "sparkle", "summaryevents", "launchdarkly", "identityservicesd", "embeddedbinaryvalidationutility", "comalienator88", "aaprofilepicture", "minilauncher", "jna", "automator", "locationaccessstored", "spotlight", "cef"]
